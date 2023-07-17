@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.widget.Toast
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.languageid.LanguageIdentification
@@ -11,74 +12,77 @@ import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
 import dong.duan.project_company.databinding.ActivityMainBinding
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import okhttp3.*
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {
     val binding by lazy {
         ActivityMainBinding.inflate(layoutInflater)
     }
-  lateinit  var text:String
+    lateinit var text: String
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
 
         binding.btnTranslate.setOnClickListener {
-            var txt_translate= binding.editText.text.toString()
-            identifyAndTranslate(txt_translate){
-                binding.txtResult.text=it
+            var txt_translate = binding.editText.text.toString()
+            if(txt_translate==""){
+                binding.txtResult.text = ""
             }
+            else{
+            identifyAndTranslate(txt_translate) { result ->
+                binding.txtResult.text = result
+            }}
+
         }
-
-
-
-        binding.editText.addTextChangedListener(object : TextWatcher{
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                text=""
-            }
-
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-                text=p0.toString()
-            }
-
-            override fun afterTextChanged(p0: Editable?) {
-                identifyAndTranslate(p0.toString()){
-                    binding.txtResult.text=it
-                }
-            }
-
-        })
     }
 
-    fun identifyAndTranslate(text: String, callback: (String) -> Unit) {
+
+    fun identifyAndTranslate(text: String, callback: (String?) -> Unit) {
         val languageIdentifier = LanguageIdentification.getClient()
         languageIdentifier.identifyLanguage(text)
             .addOnSuccessListener { languageCode ->
-                val options = TranslatorOptions.Builder()
-                    .setSourceLanguage(languageCode)
-                    .setTargetLanguage(TranslateLanguage.ENGLISH)
-                    .build()
-                val englishGermanTranslator = Translation.getClient(options)
-                englishGermanTranslator.downloadModelIfNeeded()
-                    .addOnSuccessListener {
-                        englishGermanTranslator.translate(text)
-                            .addOnSuccessListener { translatedText ->
-                                callback(translatedText)
-                            }
-                            .addOnFailureListener { exception ->
-                            }
-                            .addOnCompleteListener {
-                                englishGermanTranslator.close()
-                            }
-                    }
-                    .addOnFailureListener { exception ->
-                        englishGermanTranslator.close()
-                    }
+                translateText(text, languageCode) {
+                    callback(it)
+                }
             }
-            .addOnFailureListener {
-                showToast(it.message.toString())
+            .addOnFailureListener { languageException ->
+                callback(null)
             }
     }
 
-    fun showToast(mess:Any){
-        Toast.makeText(applicationContext,mess.toString(),Toast.LENGTH_LONG).show()
+    fun translateText(sourceText: String, code: String, callback: (String) -> Unit) {
+
+        val targetLanguage = "en"
+        val apiKey = "ea91b4c242msh3354b2440ddf4b9p13b289jsn534bceec3cd6"
+        val encodedSourceText = URLEncoder.encode(sourceText, "UTF-8")
+        val url =
+            "https://api.mymemory.translated.net/get?q=$encodedSourceText&langpair=$code|$targetLanguage&X-RapidAPI-Key=$apiKey"
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url(url)
+            .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                val responseBody = response.body?.string()
+                val translatedText = responseBody?.let {
+                    it.substringAfter("\"translatedText\":\"").substringBefore("\"")
+                }
+                callback(translatedText ?: "Can't translate")
+            }
+
+            override fun onFailure(call: Call, e: IOException) {
+                callback(e.message.toString())
+            }
+        })
+    }
+
+    fun showToast(mess: Any) {
+        Toast.makeText(applicationContext, mess.toString(), Toast.LENGTH_LONG).show()
     }
 }
