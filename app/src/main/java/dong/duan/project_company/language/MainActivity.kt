@@ -1,27 +1,18 @@
-package dong.duan.project_company
+package dong.duan.project_company.language
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.util.Log
 import android.widget.Toast
 import com.google.mlkit.common.model.DownloadConditions
-import com.google.mlkit.common.model.RemoteModelManager
 import com.google.mlkit.nl.languageid.LanguageIdentification
 import com.google.mlkit.nl.translate.TranslateLanguage
-import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
 import dong.duan.project_company.base.GenericAdapter
 import dong.duan.project_company.databinding.ActivityMainBinding
 import dong.duan.project_company.databinding.ItemTextCheckBinding
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import okhttp3.*
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 
 class MainActivity : AppCompatActivity() {

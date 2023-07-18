@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">project_company</string>
+    <string name="resize_image">Resize Image</string>
 </resources>

@@ -1,0 +1,115 @@
+fun clarifyImage(bitmap: Bitmap): Bitmap {
+        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val contrastAdjustedBitmap = adjustContrast(mutableBitmap)
+        val sharpenedBitmap = sharpenImage(mutableBitmap)
+        val denoisedBitmap = denoiseImage(mutableBitmap)
+
+        return denoisedBitmap
+    }
+    private fun adjustContrast(bitmap: Bitmap): Bitmap {
+        val contrast = 1.5f
+
+        val contrastAdjustedBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
+        val canvas = Canvas(contrastAdjustedBitmap)
+        val paint = Paint()
+
+        // Apply contrast adjustment to each pixel
+        for (x in 0 until bitmap.width) {
+            for (y in 0 until bitmap.height) {
+                val color = bitmap.getPixel(x, y)
+                val r = Color.red(color)
+                val g = Color.green(color)
+                val b = Color.blue(color)
+
+                val newR = ((r - 128) * contrast + 128).toInt().coerceIn(0, 255)
+                val newG = ((g - 128) * contrast + 128).toInt().coerceIn(0, 255)
+                val newB = ((b - 128) * contrast + 128).toInt().coerceIn(0, 255)
+
+                paint.color = Color.rgb(newR, newG, newB)
+                canvas.drawPoint(x.toFloat(), y.toFloat(), paint)
+            }
+        }
+
+        return contrastAdjustedBitmap
+    }
+    private fun sharpenImage(bitmap: Bitmap): Bitmap {
+        val sharpenKernel = floatArrayOf(
+            0f, -1f, 0f,
+            -1f, 5f, -1f,
+            0f, -1f, 0f
+        )
+
+        val sharpenedBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
+        val rs = RenderScript.create(applicationContext)
+        val sharpenScript = ScriptIntrinsicConvolve3x3.create(rs, Element.U8_4(rs))
+
+        // Apply the sharpening kernel to the bitmap using RenderScript
+        val allocationIn = Allocation.createFromBitmap(rs, bitmap)
+        val allocationOut = Allocation.createFromBitmap(rs, sharpenedBitmap)
+        sharpenScript.setInput(allocationIn)
+        sharpenScript.setCoefficients(sharpenKernel)
+        sharpenScript.forEach(allocationOut)
+        allocationOut.copyTo(sharpenedBitmap)
+
+        allocationIn.destroy()
+        allocationOut.destroy()
+        sharpenScript.destroy()
+        rs.destroy()
+
+        return sharpenedBitmap
+    }
+    private fun denoiseImage(bitmap: Bitmap): Bitmap {
+        val blurRadius = 10f
+
+        val denoisedBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, bitmap.config)
+        val rs = RenderScript.create(applicationContext)
+        val blurScript = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs))
+
+        // Apply Gaussian blur to denoise the image using RenderScript
+        val allocationIn = Allocation.createFromBitmap(rs, bitmap)
+        val allocationOut = Allocation.createFromBitmap(rs, denoisedBitmap)
+        blurScript.setRadius(blurRadius)
+        blurScript.setInput(allocationIn)
+        blurScript.forEach(allocationOut)
+        allocationOut.copyTo(denoisedBitmap)
+
+        allocationIn.destroy()
+        allocationOut.destroy()
+        blurScript.destroy()
+        rs.destroy()
+
+        return denoisedBitmap
+    }
+    fun generateThumbnail(bitmap: Bitmap, thumbnailWidth: Int, thumbnailHeight: Int): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val thumbnailAspectRatio = thumbnailWidth.toDouble() / thumbnailHeight.toDouble()
+        val originalAspectRatio = width.toDouble() / height.toDouble()
+        val thumbnailBitmap: Bitmap
+        val scale: Float
+        if (originalAspectRatio > thumbnailAspectRatio) {
+            // Resize based on width
+            scale = thumbnailWidth.toFloat() / width.toFloat()
+            val targetHeight = (width.toDouble() / thumbnailAspectRatio).toInt()
+            thumbnailBitmap = Bitmap.createScaledBitmap(bitmap, thumbnailWidth, targetHeight, true)
+        } else {
+            // Resize based on height
+            scale = thumbnailHeight.toFloat() / height.toFloat()
+            val targetWidth = (height.toDouble() * thumbnailAspectRatio).toInt()
+            thumbnailBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, thumbnailHeight, true)
+        }
+
+        val matrix = Matrix()
+        matrix.postScale(scale, scale)
+
+        return Bitmap.createBitmap(
+            thumbnailBitmap,
+            0,
+            0,
+            thumbnailBitmap.width,
+            thumbnailBitmap.height,
+            matrix,
+            true
+        )
+    }
+
