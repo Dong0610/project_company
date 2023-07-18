@@ -8,7 +8,10 @@
     tools:context=".MainActivity">
 
 
-    <TextView
+    <androidx.recyclerview.widget.RecyclerView
+        android:orientation="vertical"
+        tools:listitem="@layout/item_text_check"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         android:textColor="@color/black"
         android:textSize="@dimen/_16sdp"
         android:layout_marginBottom="@dimen/_10sdp"
